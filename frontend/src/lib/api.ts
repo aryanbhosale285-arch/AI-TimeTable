@@ -3,14 +3,25 @@ import type {
   Timetable, PreflightResult, RuleConfig, CustomRule, FixedSlot,
 } from "./types";
 
-// Most requests go through Next's /api rewrite to the FastAPI backend.
+// Locally, requests go through Next's /api rewrite to the FastAPI backend.
 const BASE = "/api";
 const DIRECT_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   (typeof window !== "undefined" ? "http://localhost:8000/api" : BASE);
 
+// In the browser on a deployed site, call the backend DIRECTLY
+// (NEXT_PUBLIC_BACKEND_URL) instead of bouncing through Vercel's proxy — the
+// proxy has a short timeout that fails while a free-tier backend cold-starts.
+// Locally NEXT_PUBLIC_BACKEND_URL is unset, so it falls back to the /api rewrite.
+function apiBase(): string {
+  if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_BACKEND_URL) {
+    return process.env.NEXT_PUBLIC_BACKEND_URL;
+  }
+  return BASE;
+}
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
@@ -85,7 +96,7 @@ export const api = {
   importCsv: async (sid: number, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${BASE}/schools/${sid}/import`, { method: "POST", body: form });
+    const res = await fetch(`${apiBase()}/schools/${sid}/import`, { method: "POST", body: form });
     if (!res.ok) {
       const body = await res.text();
       let detail: unknown = body;
