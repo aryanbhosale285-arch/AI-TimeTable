@@ -7,10 +7,12 @@ import app.models  # noqa: F401  ensure models are registered
 
 app = FastAPI(title="Timetable AI", version="1.0.0")
 
+# Allow the local dev frontend and any deployed frontend (Vercel) to call the API.
+# No cookies/auth are used, so a permissive origin list is safe here.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
