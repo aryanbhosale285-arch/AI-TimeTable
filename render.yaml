@@ -1,0 +1,16 @@
+# Render Blueprint for the FastAPI backend.
+# In Render: New + → "Blueprint" → pick this repo → it reads this file.
+# After it deploys, set DATABASE_URL (your Supabase pooler URL) in the dashboard.
+services:
+  - type: web
+    name: timetable-ai-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        sync: false        # set this in the Render dashboard (your Supabase URL)
