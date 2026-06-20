@@ -1,0 +1,6 @@
+.venv
+venv
+__pycache__
+*.pyc
+timetable.db
+test_solver_standalone.py
