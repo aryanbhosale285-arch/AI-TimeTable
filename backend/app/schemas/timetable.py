@@ -61,3 +61,37 @@ class PreflightResult(BaseModel):
     errors: List[str]
     warnings: List[str]
     stats: dict
+
+
+class GenerationJobOut(BaseModel):
+    id: int
+    school_id: int
+    timetable_name: str
+    status: str
+    stage: Optional[str] = None
+    errors: List[str] = []
+    timetable_id: Optional[int] = None
+    created_at: datetime
+    finished_at: Optional[datetime] = None
+
+
+class ShareLinkOut(BaseModel):
+    id: int
+    token: str
+    timetable_id: int
+    revoked: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class ParentSlotOut(BaseModel):
+    """A timetable cell as parents see it — no staff details."""
+    section_id: int
+    subject_id: Optional[int] = None
+    day_index: int
+    period_index: int
+    is_free: bool
+    is_fixed: bool
+    conflict: bool
+    subject_name: Optional[str] = None
+    subject_color: Optional[str] = None

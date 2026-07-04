@@ -42,6 +42,7 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
   const [preflight, setPreflight] = useState<PreflightResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [genError, setGenError] = useState<string[] | null>(null);
+  const [genStage, setGenStage] = useState<string | null>(null);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -68,23 +69,38 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // Generation runs as a background job on the server; we poll its status so
+  // long solves survive proxy timeouts and free-tier cold starts.
   async function generate() {
     setBusy(true);
     setGenError(null);
-    const startedAt = Date.now();
+    setGenStage("starting");
     try {
-      const tt = await api.generate(sid, { name: `Timetable ${new Date().toLocaleString()}` });
-      await mutateTT();
-      window.location.href = `/school/${sid}/timetable/${tt.id}`;
-    } catch (err) {
-      if (!(err instanceof ApiError) || err.status >= 500) {
-        const latest = await recoverGeneratedTimetable(sid, startedAt);
-        if (latest) {
+      const job = await api.generateAsync(sid, {
+        name: `Timetable ${new Date().toLocaleString()}`,
+      });
+      const deadline = Date.now() + 5 * 60_000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2000));
+        let j;
+        try {
+          j = await api.getJob(sid, job.id);
+        } catch {
+          continue; // transient network blip — keep polling
+        }
+        setGenStage(j.status === "RUNNING" ? j.stage || "working" : j.status.toLowerCase());
+        if (j.status === "SUCCEEDED" && j.timetable_id) {
           await mutateTT();
-          window.location.href = `/school/${sid}/timetable/${latest.id}`;
+          window.location.href = `/school/${sid}/timetable/${j.timetable_id}`;
+          return;
+        }
+        if (j.status === "FAILED") {
+          setGenError(j.errors.length ? j.errors : ["Generation failed"]);
           return;
         }
       }
+      setGenError(["Generation is taking unusually long. Refresh in a minute — the timetable may still appear."]);
+    } catch (err) {
       if (err instanceof ApiError && err.detail && typeof err.detail === "object") {
         const d = err.detail as { errors?: string[]; message?: string; log?: string[] };
         setGenError(d.errors || d.log || [d.message || "Generation failed"]);
@@ -93,6 +109,7 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
       }
     } finally {
       setBusy(false);
+      setGenStage(null);
     }
   }
 
@@ -194,6 +211,18 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
           </Button>
         </div>
 
+        {busy && genStage && (
+          <div className="flex items-center gap-3 rounded-lg border border-brand-500/30 bg-brand-50 p-4 dark:border-brand-500/40 dark:bg-brand-500/10">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
+            <p className="text-sm text-brand-700 dark:text-indigo-300">
+              {genStage === "preflight" && "Checking feasibility…"}
+              {genStage === "solving" && "Solving — placing every lecture without clashes…"}
+              {genStage === "saving" && "Saving the timetable…"}
+              {!["preflight", "solving", "saving"].includes(genStage) && "Starting generation…"}
+            </p>
+          </div>
+        )}
+
         {preflight && (
           <div className={`rounded-lg border p-4 ${preflight.feasible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
             <p className="font-medium">
@@ -241,17 +270,6 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
       )}
     </div>
   );
-}
-
-async function recoverGeneratedTimetable(sid: number, startedAt: number) {
-  try {
-    const timetables = await api.listTimetables(sid);
-    return timetables
-      .filter((tt) => new Date(tt.created_at).getTime() >= startedAt - 10_000)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-  } catch {
-    return undefined;
-  }
 }
 
 function RoomsCard({

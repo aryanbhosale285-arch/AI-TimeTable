@@ -151,3 +151,55 @@ export interface CustomRule {
   param_int?: number | null;
   enabled: boolean;
 }
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface GenerationJob {
+  id: number;
+  school_id: number;
+  timetable_name: string;
+  status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
+  stage?: "preflight" | "solving" | "saving" | null;
+  errors: string[];
+  timetable_id?: number | null;
+  created_at: string;
+  finished_at?: string | null;
+}
+
+export interface ShareLink {
+  id: number;
+  token: string;
+  timetable_id: number;
+  revoked: boolean;
+  created_at: string;
+}
+
+export interface ParentSlot {
+  section_id: number;
+  subject_id?: number | null;
+  day_index: number;
+  period_index: number;
+  is_free: boolean;
+  is_fixed: boolean;
+  conflict: boolean;
+  subject_name?: string | null;
+  subject_color?: string | null;
+}
+
+export interface ShareView {
+  school: School;
+  timetable: Timetable;
+  standards: Standard[];
+  slots: ParentSlot[];
+}

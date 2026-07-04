@@ -1,13 +1,11 @@
 import type {
   School, Subject, Standard, Room, Teacher, Assignment,
   Timetable, PreflightResult, RuleConfig, CustomRule, FixedSlot,
+  AuthResponse, User, GenerationJob, ShareLink, ShareView,
 } from "./types";
 
 // Locally, requests go through Next's /api rewrite to the FastAPI backend.
 const BASE = "/api";
-const DIRECT_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" ? "http://localhost:8000/api" : BASE);
 
 // In the browser on a deployed site, call the backend DIRECTLY
 // (NEXT_PUBLIC_BACKEND_URL) instead of bouncing through Vercel's proxy — the
@@ -20,22 +18,63 @@ function apiBase(): string {
   return BASE;
 }
 
+// ---- Auth token (bearer, kept in localStorage) ----
+
+const TOKEN_KEY = "tt_token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+function authHeaders(): Record<string, string> {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+function handleUnauthorized(path: string) {
+  // Session expired or missing: send the admin to the login screen.
+  // Public pages (/share, /login itself) never call protected endpoints.
+  if (typeof window === "undefined" || path.startsWith("/auth")) return;
+  clearToken();
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
+}
+
+async function parseError(res: Response): Promise<ApiError> {
+  // Read the body ONCE as text, then try to parse JSON from it. Reading the
+  // stream twice (res.json() then res.text()) throws "body stream already read".
+  const body = await res.text();
+  let detail: unknown = body;
+  try {
+    detail = JSON.parse(body).detail ?? body;
+  } catch {
+    /* not JSON — keep the raw text */
+  }
+  return new ApiError(res.status, detail);
+}
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${apiBase()}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...(opts?.headers ?? {}),
+    },
   });
   if (!res.ok) {
-    // Read the body ONCE as text, then try to parse JSON from it. Reading the
-    // stream twice (res.json() then res.text()) throws "body stream already read".
-    const body = await res.text();
-    let detail: unknown = body;
-    try {
-      detail = JSON.parse(body).detail ?? body;
-    } catch {
-      /* not JSON — keep the raw text */
-    }
-    throw new ApiError(res.status, detail);
+    if (res.status === 401) handleUnauthorized(path);
+    throw await parseError(res);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -54,6 +93,13 @@ export class ApiError extends Error {
 export const fetcher = <T>(path: string) => req<T>(path);
 
 export const api = {
+  // Auth
+  register: (body: { email: string; name: string; password: string }) =>
+    req<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  login: (body: { email: string; password: string }) =>
+    req<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  me: () => req<User>("/auth/me"),
+
   // Schools
   listSchools: () => req<School[]>("/schools"),
   getSchool: (id: number) => req<School>(`/schools/${id}`),
@@ -96,16 +142,14 @@ export const api = {
   importCsv: async (sid: number, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${apiBase()}/schools/${sid}/import`, { method: "POST", body: form });
+    const res = await fetch(`${apiBase()}/schools/${sid}/import`, {
+      method: "POST",
+      body: form,
+      headers: authHeaders(),
+    });
     if (!res.ok) {
-      const body = await res.text();
-      let detail: unknown = body;
-      try {
-        detail = JSON.parse(body).detail ?? body;
-      } catch {
-        /* keep raw text */
-      }
-      throw new ApiError(res.status, detail);
+      if (res.status === 401) handleUnauthorized(`/schools/${sid}/import`);
+      throw await parseError(res);
     }
     return res.json() as Promise<{ imported: number; warnings: string[] }>;
   },
@@ -113,27 +157,15 @@ export const api = {
   // Timetables
   preflight: (sid: number) =>
     req<PreflightResult>(`/schools/${sid}/timetables/preflight`, { method: "POST" }),
-  generate: async (sid: number, body: unknown) => {
-    // Generation can run longer than Next's proxy comfortably allows. Call the
-    // FastAPI backend directly from the browser so a successful solve does not
-    // get shown as a proxy-side 500.
-    const res = await fetch(`${DIRECT_BASE}/schools/${sid}/timetables/generate`, {
+  // Background generation: start a job, then poll it — no long-held connection,
+  // so proxy/cold-start timeouts can't kill a successful solve.
+  generateAsync: (sid: number, body: unknown) =>
+    req<GenerationJob>(`/schools/${sid}/timetables/generate-async`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const responseBody = await res.text();
-      let detail: unknown = responseBody;
-      try {
-        detail = JSON.parse(responseBody).detail ?? responseBody;
-      } catch {
-        /* keep raw text */
-      }
-      throw new ApiError(res.status, detail);
-    }
-    return res.json() as Promise<Timetable>;
-  },
+    }),
+  getJob: (sid: number, jobId: number) =>
+    req<GenerationJob>(`/schools/${sid}/timetables/jobs/${jobId}`),
   listTimetables: (sid: number) => req<Timetable[]>(`/schools/${sid}/timetables`),
   getTimetable: (sid: number, tid: number) =>
     req<Timetable>(`/schools/${sid}/timetables/${tid}`),
@@ -141,6 +173,30 @@ export const api = {
     req<Timetable>(`/schools/${sid}/timetables/${tid}/publish`, { method: "POST" }),
   revoke: (sid: number, tid: number) =>
     req<void>(`/schools/${sid}/timetables/${tid}`, { method: "DELETE" }),
+
+  // Excel export needs the auth header, so fetch as a blob and trigger the
+  // download from JS (a plain <a href> can't send Authorization).
+  downloadExport: async (sid: number, tid: number, filename: string) => {
+    const res = await fetch(`${apiBase()}/schools/${sid}/timetables/${tid}/export.xlsx`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw await parseError(res);
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  // Share links (parent view)
+  createShareLink: (sid: number, tid: number) =>
+    req<ShareLink>(`/schools/${sid}/timetables/${tid}/share-links`, { method: "POST" }),
+  listShareLinks: (sid: number, tid: number) =>
+    req<ShareLink[]>(`/schools/${sid}/timetables/${tid}/share-links`),
+  revokeShareLink: (sid: number, tid: number, linkId: number) =>
+    req<void>(`/schools/${sid}/timetables/${tid}/share-links/${linkId}`, { method: "DELETE" }),
+  getShare: (token: string) => req<ShareView>(`/share/${token}`),
 
   // Rules
   getRules: () => req<RuleConfig>("/rules"),

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 
 export const metadata: Metadata = {
   title: "Timetable AI",
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/rules" className="hover:text-brand-600">Rules</Link>
               <Link href="/setup" className="hover:text-brand-600">New School</Link>
               <ThemeToggle />
+              <UserMenu />
             </nav>
           </div>
         </header>

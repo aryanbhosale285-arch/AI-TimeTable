@@ -3,49 +3,57 @@
 import { Fragment, useMemo, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/api";
-import type { School, Standard, Timetable, TimetableSlot } from "@/lib/types";
+import type { ParentSlot, ShareView } from "@/lib/types";
 import { Card, Button } from "@/components/ui";
 
-export default function ParentTimetablePage({
-  params,
-}: {
-  params: { id: string; ttid: string };
-}) {
-  const sid = Number(params.id);
-  const tid = Number(params.ttid);
-
-  const { data: school } = useSWR<School>(`/schools/${sid}`, fetcher);
-  const { data: tt } = useSWR<Timetable>(`/schools/${sid}/timetables/${tid}`, fetcher);
-  const { data: standards } = useSWR<Standard[]>(`/schools/${sid}/standards`, fetcher);
+/** Public, read-only parent view — resolved from a revocable share token. */
+export default function SharedTimetablePage({ params }: { params: { token: string } }) {
+  const { data, error } = useSWR<ShareView>(`/share/${params.token}`, fetcher, {
+    shouldRetryOnError: false,
+  });
   const [selectedSection, setSelectedSection] = useState<number | null>(null);
 
   const sections = useMemo(
-    () => standards?.flatMap((s) => s.sections.map((sec) => ({ ...sec, std: s.name }))) ?? [],
-    [standards]
+    () =>
+      data?.standards.flatMap((s) => s.sections.map((sec) => ({ ...sec, std: s.name }))) ?? [],
+    [data]
   );
   const activeSection = selectedSection ?? sections[0]?.id ?? null;
 
   const periodTimes = useMemo(() => {
     const m = new Map<number, string>();
-    for (const pp of school?.periods ?? []) {
+    for (const pp of data?.school.periods ?? []) {
       m.set(pp.period_number - 1, `${pp.start_time}-${pp.end_time}`);
     }
     return m;
-  }, [school]);
+  }, [data]);
 
   const grid = useMemo(() => {
-    const m = new Map<string, TimetableSlot>();
-    if (!tt?.slots) return m;
-    for (const slot of tt.slots) {
+    const m = new Map<string, ParentSlot>();
+    for (const slot of data?.slots ?? []) {
       if (slot.section_id === activeSection) {
         m.set(`${slot.day_index}-${slot.period_index}`, slot);
       }
     }
     return m;
-  }, [tt, activeSection]);
+  }, [data, activeSection]);
 
-  if (!school || !tt) return <p className="text-slate-500">Loading...</p>;
+  if (error) {
+    return (
+      <div className="mx-auto max-w-md pt-16 text-center">
+        <Card>
+          <h1 className="text-lg font-semibold">Link not available</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            This share link is invalid or has been revoked by the school. Please ask the
+            school for a new link.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+  if (!data) return <p className="text-slate-500">Loading…</p>;
 
+  const school = data.school;
   const days = school.working_days;
   const periods = school.periods_per_day;
   const lunch = school.breaks?.[0] ?? null;
@@ -57,7 +65,7 @@ export default function ParentTimetablePage({
         <div>
           <p className="text-sm text-slate-500">{school.name}</p>
           <h1 className="text-2xl font-bold">Class Timetable</h1>
-          <p className="text-sm text-slate-500">{tt.name}</p>
+          <p className="text-sm text-slate-500">{data.timetable.name}</p>
         </div>
         <Button variant="ghost" onClick={() => window.print()}>Print / PDF</Button>
       </div>
@@ -161,6 +169,10 @@ export default function ParentTimetablePage({
           </tbody>
         </table>
       </Card>
+
+      <p className="text-xs text-slate-400">
+        Shared read-only by the school. Staff details are not shown.
+      </p>
     </div>
   );
 }

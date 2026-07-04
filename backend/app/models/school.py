@@ -17,6 +17,8 @@ class School(Base):
     __tablename__ = "schools"
 
     id = Column(Integer, primary_key=True, index=True)
+    # Nullable so schools created before auth existed keep working (legacy rows).
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     name = Column(String, nullable=False)
     board = Column(Enum(BoardTemplate), default=BoardTemplate.CBSE)
     periods_per_day = Column(Integer, default=8)
@@ -24,6 +26,7 @@ class School(Base):
     half_day_periods = Column(Integer, nullable=True)
     academic_year = Column(String, default="2025-26")
 
+    owner = relationship("User", back_populates="schools")
     working_days = relationship("WorkingDay", back_populates="school", cascade="all, delete-orphan")
     periods = relationship("Period", back_populates="school", cascade="all, delete-orphan", order_by="Period.period_number")
     breaks = relationship("Break", back_populates="school", cascade="all, delete-orphan")

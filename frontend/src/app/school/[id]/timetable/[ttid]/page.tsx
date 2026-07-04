@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { api, fetcher } from "@/lib/api";
 import type { School, Timetable, Standard, Teacher, TimetableSlot } from "@/lib/types";
 import { Card, Button, Badge } from "@/components/ui";
+import { ShareLinksCard } from "@/components/ShareLinks";
 
 type View = "student" | "teacher";
 
@@ -97,9 +98,14 @@ export default function TimetableView({
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => window.print()}>Print / PDF</Button>
-          <a href={`/api/schools/${sid}/timetables/${tid}/export.xlsx`} download>
-            <Button variant="ghost">Excel</Button>
-          </a>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              api.downloadExport(sid, tid, `${tt.name.replace(/[\\/:*?"<>|]/g, "-")}.xlsx`)
+            }
+          >
+            Excel (classes + teachers)
+          </Button>
           <Button variant="danger" onClick={revoke}>Revoke</Button>
           {tt.status !== "PUBLISHED" && <Button onClick={publish}>Publish</Button>}
         </div>
@@ -241,6 +247,8 @@ export default function TimetableView({
       <p className="text-xs text-slate-400">
         Color-coded by subject. Empty cells are free periods.
       </p>
+
+      <ShareLinksCard sid={sid} tid={tid} />
     </div>
   );
 }

@@ -20,6 +20,9 @@ Deploy the **backend first** (you need its URL for the frontend).
 3. After it creates the service, open it → **Environment** → add:
    - `DATABASE_URL` = your Supabase pooler URL
      (`postgresql+psycopg://postgres.<ref>:<password>@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres`)
+   - `SECRET_KEY` = a long random string — it signs login tokens. The blueprint
+     auto-generates one; only set it manually if you created the service by hand.
+     **Never leave the code default in production.**
 4. Deploy. When it's live, copy the URL, e.g. `https://timetable-ai-backend.onrender.com`.
 5. Test it: open `https://<your-backend>.onrender.com/api/health` → should show `{"status":"ok"}`.
 
@@ -44,4 +47,7 @@ Push to GitHub → Vercel and Render **auto-redeploy** from the `main` branch. N
 
 ## Quick gotchas
 - Frontend shows "Couldn't reach the API" → the two Vercel env vars are wrong/missing, or the backend is still waking up (wait ~50s, refresh).
-- Generation slow on first try → Render free tier waking up; subsequent runs are fast.
+- Generation slow on first try → Render free tier waking up; the UI polls a background job, so it finishes even through a cold start.
+- Backend logs `tenant/user … not found` from Postgres → the Supabase project was deleted/paused or the pooler credentials rotated. Create/restore the project and update `DATABASE_URL` (locally, the app falls back to SQLite with zero setup).
+- Schema changes deploy themselves: on boot the backend creates missing tables and adds missing columns automatically — no manual migrations.
+- Changing `SECRET_KEY` signs everyone out (tokens become invalid). That's expected.

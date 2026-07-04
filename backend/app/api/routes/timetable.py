@@ -1,4 +1,6 @@
 import json
+import secrets
+import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -7,12 +9,18 @@ from app.core.database import get_db
 from app.models.school import School
 from app.models.academic import Subject, Room
 from app.models.teacher import Teacher
-from app.models.timetable import Timetable, TimetableSlot, FixedSlot, TimetableStatus
+from app.models.timetable import (
+    Timetable, TimetableSlot, FixedSlot, TimetableStatus, GenerationJob, ShareLink,
+)
 from app.schemas.timetable import (
     TimetableCreate, TimetableOut, TimetableDetail, TimetableSlotOut, PreflightResult,
+    GenerationJobOut, ShareLinkOut,
+)
+from app.services.generation import (
+    GenerationError, generate_timetable, run_generation_job,
+    MAX_SYNC_SOLVE_SECONDS,
 )
 from app.services.preflight import run_preflight
-from app.services.solver import TimetableSolver
 
 router = APIRouter(prefix="/schools/{school_id}/timetables", tags=["timetables"])
 
@@ -37,103 +45,72 @@ def preflight(school_id: int, db: Session = Depends(get_db)):
     )
 
 
+def _persist_fixed_slots(school_id: int, payload: TimetableCreate, db: Session) -> None:
+    for fs in payload.fixed_slots:
+        db.add(FixedSlot(school_id=school_id, **fs.model_dump()))
+    db.flush()
+
+
 @router.post("/generate", response_model=TimetableDetail)
 def generate(school_id: int, payload: TimetableCreate, db: Session = Depends(get_db)):
-    print(f"!!! STARTING TIMETABLE GENERATION for school {school_id} !!!", flush=True)
+    """Synchronous generation — kept for compatibility; capped so proxies don't
+    drop the connection. Prefer POST /generate-async + job polling."""
     school = _get_school(school_id, db)
-
-    # Persist any fixed slots passed in
-    fixed_models = []
-    for fs in payload.fixed_slots:
-        m = FixedSlot(school_id=school_id, **fs.model_dump())
-        db.add(m)
-        fixed_models.append(m)
-    db.flush()
-
-    all_fixed = db.query(FixedSlot).filter(FixedSlot.school_id == school_id).all()
-
-    # Pre-flight gate
-    report = run_preflight(school, all_fixed)
-    if not report.feasible:
-        raise HTTPException(
-            status_code=422,
-            detail={"message": "Pre-flight failed", "errors": report.errors},
+    _persist_fixed_slots(school_id, payload, db)
+    try:
+        tt = generate_timetable(
+            db, school, payload.name, time_cap_seconds=MAX_SYNC_SOLVE_SECONDS
         )
-
-    # Solve — honour the admin-configured rules.
-    from app.api.routes.rule import get_or_create
-    from app.models.rule import CustomRule
-    cfg = get_or_create(db)
-    rules = {
-        "keep_key_periods_filled": cfg.keep_key_periods_filled,
-        "teacher_rest_after_two": cfg.teacher_rest_after_two,
-        "avoid_back_to_back_free": cfg.avoid_back_to_back_free,
-        "spread_subjects": cfg.spread_subjects,
-        "morning_hard_subjects": cfg.morning_hard_subjects,
-        "max_doubles_per_week": cfg.max_doubles_per_week,
-    }
-    custom_rules = [
-        {
-            "rule_type": r.rule_type,
-            "subject_name": r.subject_name,
-            "param_text": r.param_text,
-            "param_int": r.param_int,
-            "enabled": r.enabled,
-        }
-        for r in db.query(CustomRule).filter(CustomRule.enabled.is_(True))
-    ]
-    # Cap solving to 25s so the Next.js 30s proxy timeout doesn't drop the connection
-    time_limit = min(cfg.solve_time_limit, 25)
-
-    solver = TimetableSolver(
-        school, all_fixed, time_limit_seconds=time_limit,
-        rules=rules, custom_rules=custom_rules,
-    )
-    result = solver.solve()
-
-    if result.status == "INFEASIBLE":
+    except GenerationError as e:
         raise HTTPException(
-            status_code=422,
-            detail={
-                "message": "Solver could not find a valid timetable.",
-                "log": result.log,
-            },
+            status_code=422, detail={"message": e.message, "errors": e.errors}
         )
-
-    tt = Timetable(
-        school_id=school_id,
-        name=payload.name,
-        status=TimetableStatus.GENERATED,
-        generation_log=json.dumps(
-            {"status": result.status, "objective": result.objective, "log": result.log}
-        ),
-    )
-    db.add(tt)
-    db.flush()
-
-    # Assign a concrete room to each lecture (greedy, no double-booking per slot).
-    _assign_rooms(school, result.slots)
-
-    # Write all cells in ONE bulk insert instead of ~800 individual INSERTs —
-    # over a remote DB that one change cuts the write from ~15s to ~1s.
-    mappings = [{"timetable_id": tt.id, **cell} for cell in result.slots]
-    mappings += [
-        {
-            "timetable_id": tt.id,
-            "section_id": fs.section_id,
-            "subject_id": fs.subject_id,
-            "day_index": fs.day_index,
-            "period_index": fs.period_index,
-            "is_fixed": True,
-        }
-        for fs in all_fixed
-    ]
-    if mappings:
-        db.bulk_insert_mappings(TimetableSlot, mappings)
-
-    db.commit()
-    db.refresh(tt)
     return _detail(tt, db)
+
+
+@router.post("/generate-async", response_model=GenerationJobOut, status_code=202)
+def generate_async(school_id: int, payload: TimetableCreate, db: Session = Depends(get_db)):
+    """Start generation in the background and return a pollable job."""
+    _get_school(school_id, db)
+    _persist_fixed_slots(school_id, payload, db)
+
+    job = GenerationJob(school_id=school_id, timetable_name=payload.name, status="QUEUED")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    threading.Thread(target=run_generation_job, args=(job.id,), daemon=True).start()
+    return _job_out(job)
+
+
+@router.get("/jobs/{job_id}", response_model=GenerationJobOut)
+def get_job(school_id: int, job_id: int, db: Session = Depends(get_db)):
+    job = db.query(GenerationJob).filter(
+        GenerationJob.id == job_id, GenerationJob.school_id == school_id
+    ).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return _job_out(job)
+
+
+def _job_out(job: GenerationJob) -> GenerationJobOut:
+    errors: List[str] = []
+    if job.error:
+        try:
+            errors = json.loads(job.error)
+        except ValueError:
+            errors = [job.error]
+    return GenerationJobOut(
+        id=job.id,
+        school_id=job.school_id,
+        timetable_name=job.timetable_name,
+        status=job.status,
+        stage=job.stage,
+        errors=errors,
+        timetable_id=job.timetable_id,
+        created_at=job.created_at,
+        finished_at=job.finished_at,
+    )
 
 
 @router.get("", response_model=List[TimetableOut])
@@ -179,14 +156,22 @@ def export_xlsx(school_id: int, timetable_id: int, db: Session = Depends(get_db)
         for p in school.periods
     }
 
+    section_labels = {s["id"]: s["label"] for s in sections}
     slots_by_section: dict = defaultdict(dict)
+    slots_by_teacher: dict = defaultdict(dict)
     for s in tt.slots:
         subj = subjects.get(s.subject_id)
-        slots_by_section[s.section_id][(s.day_index, s.period_index)] = {
+        cell = {
             "subject": subj.name if subj else None,
             "teacher": teachers.get(s.teacher_id),
             "color": subj.color if subj else None,
         }
+        slots_by_section[s.section_id][(s.day_index, s.period_index)] = cell
+        if s.teacher_id:
+            # On a teacher's own sheet the second line shows the class, not the teacher.
+            slots_by_teacher[s.teacher_id][(s.day_index, s.period_index)] = {
+                **cell, "teacher": section_labels.get(s.section_id),
+            }
 
     data = build_timetable_xlsx(
         days=days,
@@ -195,6 +180,8 @@ def export_xlsx(school_id: int, timetable_id: int, db: Session = Depends(get_db)
         period_labels=period_labels,
         slots_by_section=slots_by_section,
         title=tt.name,
+        teachers=[{"id": tid, "label": tname} for tid, tname in sorted(teachers.items(), key=lambda kv: kv[1])],
+        slots_by_teacher=slots_by_teacher,
     )
     filename = f"{tt.name}.xlsx".replace(" ", "_").replace("/", "-")
     return StreamingResponse(
@@ -237,29 +224,53 @@ def revoke_timetable(school_id: int, timetable_id: int, db: Session = Depends(ge
     db.commit()
 
 
-def _assign_rooms(school: School, cells: list) -> None:
-    """Greedily assign a room to each solved cell (in place, adds 'room_id').
+# ---- Parent share links ----
 
-    Picks an available room whose type matches the subject's requirement, never
-    double-booking a room within the same day+period. If not enough rooms exist
-    for a slot, that cell simply gets no room (room_id stays null).
-    """
-    from collections import defaultdict
-    subj_type = {s.id: s.requires_room_type.value for s in school.subjects}
-    rooms_by_type = defaultdict(list)
-    for r in school.rooms:
-        if r.is_available:
-            rooms_by_type[r.room_type.value].append(r.id)
+def _get_timetable(school_id: int, timetable_id: int, db: Session) -> Timetable:
+    tt = db.query(Timetable).filter(
+        Timetable.id == timetable_id, Timetable.school_id == school_id
+    ).first()
+    if not tt:
+        raise HTTPException(status_code=404, detail="Timetable not found")
+    return tt
 
-    used = defaultdict(set)  # (day, period) -> set of room_ids already taken
-    for c in cells:
-        rtype = subj_type.get(c.get("subject_id"), "CLASSROOM")
-        key = (c["day_index"], c["period_index"])
-        for rid in rooms_by_type.get(rtype, []):
-            if rid not in used[key]:
-                c["room_id"] = rid
-                used[key].add(rid)
-                break
+
+@router.post("/{timetable_id}/share-links", response_model=ShareLinkOut, status_code=201)
+def create_share_link(school_id: int, timetable_id: int, db: Session = Depends(get_db)):
+    _get_timetable(school_id, timetable_id, db)
+    link = ShareLink(
+        token=secrets.token_urlsafe(16),
+        school_id=school_id,
+        timetable_id=timetable_id,
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    return link
+
+
+@router.get("/{timetable_id}/share-links", response_model=List[ShareLinkOut])
+def list_share_links(school_id: int, timetable_id: int, db: Session = Depends(get_db)):
+    _get_timetable(school_id, timetable_id, db)
+    return (
+        db.query(ShareLink)
+        .filter(ShareLink.timetable_id == timetable_id, ShareLink.revoked.is_(False))
+        .order_by(ShareLink.id.desc())
+        .all()
+    )
+
+
+@router.delete("/{timetable_id}/share-links/{link_id}", status_code=204)
+def revoke_share_link(school_id: int, timetable_id: int, link_id: int, db: Session = Depends(get_db)):
+    link = db.query(ShareLink).filter(
+        ShareLink.id == link_id,
+        ShareLink.timetable_id == timetable_id,
+        ShareLink.school_id == school_id,
+    ).first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    link.revoked = True
+    db.commit()
 
 
 def _detail(tt: Timetable, db: Session) -> TimetableDetail:

@@ -53,6 +53,35 @@ class TimetableSlot(Base):
     room = relationship("Room", back_populates="timetable_slots")
 
 
+class GenerationJob(Base):
+    """A background timetable-generation run the UI can poll for progress."""
+    __tablename__ = "generation_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False)
+    timetable_name = Column(String, nullable=False)
+    status = Column(String, default="QUEUED", nullable=False)  # QUEUED/RUNNING/SUCCEEDED/FAILED
+    stage = Column(String, nullable=True)   # "preflight" | "solving" | "saving"
+    error = Column(String, nullable=True)   # JSON list of error strings when FAILED
+    timetable_id = Column(Integer, ForeignKey("timetables.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    finished_at = Column(DateTime, nullable=True)
+
+
+class ShareLink(Base):
+    """A revocable public token that lets parents view one timetable read-only."""
+    __tablename__ = "share_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, index=True, nullable=False)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False)
+    timetable_id = Column(Integer, ForeignKey("timetables.id"), nullable=False)
+    revoked = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    timetable = relationship("Timetable")
+
+
 class FixedSlot(Base):
     """Admin-locked slots (assembly, library) that the solver never touches."""
     __tablename__ = "fixed_slots"

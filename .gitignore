@@ -18,3 +18,7 @@ npm-debug.log*
 .idea/
 .vscode/
 pgdata/
+
+# Local databases & env backups
+*.db
+.env.*

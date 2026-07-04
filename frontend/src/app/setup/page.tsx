@@ -35,6 +35,50 @@ export default function SetupPage() {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // ---- Auto-save: keep the whole form as a draft so a refresh or an
+  // accidental tab close never loses setup progress. ----
+  const DRAFT_KEY = "tt_setup_draft";
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        setName(d.name ?? "");
+        setBoard(d.board ?? "CBSE");
+        setAcademicYear(d.academicYear ?? "2025-26");
+        setPeriodsPerDay(d.periodsPerDay ?? 8);
+        setHalfDayPeriods(d.halfDayPeriods ?? 4);
+        setDays(d.days ?? ALL_DAYS.slice(0, 6));
+        setHalfDays(d.halfDays ?? ["Saturday"]);
+        setStartHour(d.startHour ?? 8);
+        setPeriodMins(d.periodMins ?? 45);
+        setLunchAfter(d.lunchAfter ?? 4);
+        setLunchMins(d.lunchMins ?? 30);
+        setAfterBreakMins(d.afterBreakMins ?? 45);
+        setManual(d.manual ?? { periodsPerDay: false, periodMins: false, lunchAfter: false, afterBreakMins: false });
+        if (d.name) setDraftRestored(true);
+      }
+    } catch { /* corrupt draft — start fresh */ }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return; // don't overwrite the stored draft before restoring it
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      name, board, academicYear, periodsPerDay, halfDayPeriods, days, halfDays,
+      startHour, periodMins, lunchAfter, lunchMins, afterBreakMins, manual,
+    }));
+  }, [hydrated, name, board, academicYear, periodsPerDay, halfDayPeriods, days,
+      halfDays, startHour, periodMins, lunchAfter, lunchMins, afterBreakMins, manual]);
+
+  function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+  }
 
   useEffect(() => {
     const defaults = BOARD_DEFAULTS[board];
@@ -97,6 +141,7 @@ export default function SetupPage() {
         periods: buildPeriods(),
         breaks: [{ name: "Lunch", after_period: lunchAfter, duration_minutes: lunchMins }],
       });
+      clearDraft();
       router.push(`/school/${school.id}`);
     } catch (e) {
       setError(e instanceof ApiError ? String(e.message) : "Failed to create school");
@@ -112,8 +157,24 @@ export default function SetupPage() {
         <h1 className="text-2xl font-bold">New School Setup</h1>
         <p className="text-sm text-slate-500">
           Nothing is hardcoded — set your own days, periods, and timings.
+          Your progress auto-saves on this device.
         </p>
       </div>
+
+      {draftRestored && (
+        <Card className="flex items-center justify-between border-amber-200 bg-amber-50 py-3 dark:border-amber-500/40 dark:bg-amber-500/10">
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Restored your unsaved draft.
+          </p>
+          <Button
+            variant="ghost"
+            className="px-3 py-1.5"
+            onClick={() => { clearDraft(); window.location.reload(); }}
+          >
+            Start fresh
+          </Button>
+        </Card>
+      )}
 
       <Card className="space-y-4">
         <div>
