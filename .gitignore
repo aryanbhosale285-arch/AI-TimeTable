@@ -22,3 +22,4 @@ pgdata/
 # Local databases & env backups
 *.db
 .env.*
+AI Time Table prd  v2.pdf
