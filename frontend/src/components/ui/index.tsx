@@ -3,7 +3,7 @@ import * as React from "react";
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 ${className}`}
+      className={`rounded-sm border border-border/70 bg-paper p-6 shadow-[0_2px_12px_-4px_rgba(20,20,40,0.07)] ${className}`}
     >
       {children}
     </div>
@@ -14,14 +14,16 @@ export function Button({
   children, className = "", variant = "primary", ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "danger" }) {
   const styles = {
-    primary: "bg-brand-600 text-white hover:bg-brand-700",
+    primary:
+      "bg-ink text-cream hover:opacity-90",
     ghost:
-      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
-    danger: "bg-red-600 text-white hover:bg-red-700",
+      "border border-ink/20 bg-transparent text-ink hover:border-ink/60",
+    danger:
+      "bg-destructive text-destructive-foreground hover:opacity-90",
   }[variant];
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+      className={`inline-flex items-center justify-center rounded-sm px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
       {...props}
     >
       {children}
@@ -32,7 +34,7 @@ export function Button({
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+      className="w-full rounded-sm border border-border bg-paper px-3 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-accent focus:ring-1 focus:ring-accent"
       {...props}
     />
   );
@@ -40,7 +42,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 export function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+    <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
       {children}
     </label>
   );
@@ -48,14 +50,14 @@ export function Label({ children }: { children: React.ReactNode }) {
 
 export function Badge({ children, color = "slate" }: { children: React.ReactNode; color?: string }) {
   const map: Record<string, string> = {
-    slate: "bg-slate-100 text-slate-700",
-    green: "bg-green-100 text-green-700",
-    red: "bg-red-100 text-red-700",
-    amber: "bg-amber-100 text-amber-700",
-    indigo: "bg-indigo-100 text-indigo-700",
+    slate: "bg-muted text-muted-foreground",
+    green: "bg-accent/20 text-accent-foreground",
+    red: "bg-destructive/15 text-destructive",
+    amber: "bg-accent/25 text-accent-foreground",
+    indigo: "bg-accent/20 text-accent-foreground",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[color] || map.slate}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${map[color] || map.slate}`}>
       {children}
     </span>
   );

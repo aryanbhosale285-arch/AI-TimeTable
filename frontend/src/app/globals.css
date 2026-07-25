@@ -2,21 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────────────────
+   Design Tokens — Editorial ink + cream palette (oklch)
+   ────────────────────────────────────────────────────────────────────── */
 :root {
-  --bg: #f8fafc;
-  --fg: #0f172a;
+  --background: oklch(0.965 0.012 85);       /* warm cream */
+  --foreground: oklch(0.18 0.03 265);         /* deep ink */
+  --ink: oklch(0.18 0.03 265);
+  --cream: oklch(0.965 0.012 85);
+  --paper: oklch(0.985 0.008 85);
+  --card: oklch(0.985 0.008 85);
+  --card-foreground: oklch(0.18 0.03 265);
+  --primary: oklch(0.18 0.03 265);
+  --primary-foreground: oklch(0.98 0.008 85);
+  --accent: oklch(0.72 0.17 55);              /* warm amber */
+  --accent-foreground: oklch(0.18 0.03 265);
+  --muted: oklch(0.92 0.012 85);
+  --muted-foreground: oklch(0.45 0.02 265);
+  --border: oklch(0.85 0.015 80);
+  --ring: oklch(0.72 0.17 55);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.98 0.01 85);
+
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.15 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
 .dark {
-  --bg: #0b1120;
-  --fg: #e2e8f0;
+  --background: oklch(0.16 0.02 265);
+  --foreground: oklch(0.94 0.01 85);
+  --ink: oklch(0.94 0.01 85);
+  --cream: oklch(0.16 0.02 265);
+  --paper: oklch(0.21 0.025 265);
+  --card: oklch(0.21 0.025 265);
+  --card-foreground: oklch(0.94 0.01 85);
+  --primary: oklch(0.94 0.01 85);
+  --primary-foreground: oklch(0.16 0.02 265);
+  --accent: oklch(0.78 0.16 55);
+  --accent-foreground: oklch(0.16 0.02 265);
+  --muted: oklch(0.26 0.025 265);
+  --muted-foreground: oklch(0.7 0.02 85);
+  --border: oklch(0.32 0.02 265);
+  --ring: oklch(0.78 0.16 55);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.98 0.01 85);
 }
 
-body {
-  background: var(--bg);
-  color: var(--fg);
+/* ──────────────────────────────────────────────────────────────────────
+   Base Layer
+   ────────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Instrument Serif', ui-serif, Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
 }
 
+/* ──────────────────────────────────────────────────────────────────────
+   Utilities
+   ────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .grain-overlay {
+    position: relative;
+  }
+  .grain-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--grain);
+    opacity: 0.5;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    border-radius: inherit;
+  }
+
+  .rule-line {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border) 20%, var(--border) 80%, transparent);
+  }
+
+  .font-display {
+    font-family: 'Instrument Serif', ui-serif, Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Print
+   ────────────────────────────────────────────────────────────────────── */
 @media print {
   .no-print {
     display: none !important;

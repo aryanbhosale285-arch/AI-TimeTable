@@ -29,16 +29,16 @@ export function UserMenu() {
     return (
       <button
         onClick={() => router.push("/login")}
-        className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+        className="inline-flex items-center gap-1 rounded-sm bg-ink px-4 py-2 text-sm font-medium text-cream transition hover:opacity-90"
       >
-        Sign in
+        Sign in <span aria-hidden>→</span>
       </button>
     );
   }
 
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden text-xs text-slate-500 sm:inline" title={user.email}>
+      <span className="hidden font-mono text-[11px] uppercase tracking-widest text-muted-foreground sm:inline" title={user.email}>
         {user.name}
       </span>
       <button
@@ -46,7 +46,7 @@ export function UserMenu() {
           clearToken();
           router.push("/login");
         }}
-        className="text-sm text-slate-500 hover:text-brand-600"
+        className="text-sm text-muted-foreground hover:text-foreground transition"
       >
         Sign out
       </button>

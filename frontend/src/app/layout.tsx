@@ -5,15 +5,16 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 
 export const metadata: Metadata = {
-  title: "Timetable AI",
-  description: "AI-powered conflict-free timetable generator for schools",
+  title: "AI-TimeTable — School schedules, solved overnight",
+  description:
+    "AI-TimeTable turns messy staff assignments into conflict-free school timetables. Preflight checks, background solving, teacher & parent views, and instant share links.",
 };
 
 // Applies the saved theme before paint to avoid a light/dark flash on load.
 const noFlashScript = `
 (function() {
   try {
-    var t = localStorage.getItem('theme');
+    var t = localStorage.getItem('tt_theme');
     if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.classList.add('dark');
     }
@@ -26,26 +27,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body>
-        <header className="no-print border-b bg-white dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
-                TT
-              </span>
-              <span>Timetable AI</span>
+        <header className="no-print border-b border-border/70">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-sm bg-ink text-cream font-display text-xl leading-none">
+                tt
+              </div>
+              <span className="font-display text-2xl leading-none">AI-TimeTable</span>
             </Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
-              <Link href="/" className="hover:text-brand-600">Dashboard</Link>
-              <Link href="/rules" className="hover:text-brand-600">Rules</Link>
-              <Link href="/setup" className="hover:text-brand-600">New School</Link>
+            <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+              <Link href="/" className="hidden hover:text-foreground sm:inline">
+                Dashboard
+              </Link>
+              <Link href="/rules" className="hidden hover:text-foreground sm:inline">
+                Rules
+              </Link>
+              <Link href="/setup" className="hidden hover:text-foreground sm:inline">
+                New School
+              </Link>
               <ThemeToggle />
               <UserMenu />
             </nav>
           </div>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="mx-auto max-w-7xl px-6 py-10">{children}</main>
       </body>
     </html>
   );

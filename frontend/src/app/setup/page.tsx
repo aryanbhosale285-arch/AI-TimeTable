@@ -26,7 +26,7 @@ export default function SetupPage() {
   const [periodMins, setPeriodMins] = useState(45);
   const [lunchAfter, setLunchAfter] = useState(4);
   const [lunchMins, setLunchMins] = useState(30);
-  const [afterBreakMins, setAfterBreakMins] = useState(45);    // afternoon period length (reduce or same)
+  const [afterBreakMins, setAfterBreakMins] = useState(45);
   const [manual, setManual] = useState({
     periodsPerDay: false,
     periodMins: false,
@@ -152,18 +152,21 @@ export default function SetupPage() {
   const canSubmit = name.trim() && days.length > 0 && periodsPerDay > 0;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">New School Setup</h1>
-        <p className="text-sm text-slate-500">
+        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          § 01 — New School
+        </div>
+        <h1 className="mt-3 font-display text-5xl leading-tight">Configure your school</h1>
+        <p className="mt-3 text-muted-foreground">
           Nothing is hardcoded — set your own days, periods, and timings.
           Your progress auto-saves on this device.
         </p>
       </div>
 
       {draftRestored && (
-        <Card className="flex items-center justify-between border-amber-200 bg-amber-50 py-3 dark:border-amber-500/40 dark:bg-amber-500/10">
-          <p className="text-sm text-amber-700 dark:text-amber-300">
+        <Card className="flex items-center justify-between border-accent/30 bg-accent/5 py-4">
+          <p className="text-sm text-accent-foreground">
             Restored your unsaved draft.
           </p>
           <Button
@@ -176,17 +179,17 @@ export default function SetupPage() {
         </Card>
       )}
 
-      <Card className="space-y-4">
+      <Card className="space-y-5">
         <div>
           <Label>School name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Demo Public School" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div>
             <Label>Board template</Label>
             <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+              className="w-full rounded-sm border border-border bg-paper px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-accent focus:ring-1 focus:ring-accent"
               value={board}
               onChange={(e) => setBoard(e.target.value)}
             >
@@ -202,7 +205,7 @@ export default function SetupPage() {
         </div>
       </Card>
 
-      <Card className="space-y-3">
+      <Card className="space-y-4">
         <Label>Working days</Label>
         <div className="flex flex-wrap gap-2">
           {ALL_DAYS.map((d) => {
@@ -212,8 +215,8 @@ export default function SetupPage() {
                 key={d}
                 type="button"
                 onClick={() => toggleDay(d)}
-                className={`rounded-lg border px-3 py-1.5 text-sm ${
-                  active ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-300 text-slate-500"
+                className={`rounded-sm border px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition ${
+                  active ? "border-ink bg-ink text-cream" : "border-border text-muted-foreground hover:border-ink/40"
                 }`}
               >
                 {d.slice(0, 3)}
@@ -221,7 +224,9 @@ export default function SetupPage() {
             );
           })}
         </div>
-        <p className="text-xs text-slate-500">Tap a selected day below to mark it a half-day.</p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Tap a selected day below to mark it a half-day.
+        </p>
         <div className="flex flex-wrap gap-2">
           {days.map((d) => (
             <button
@@ -238,7 +243,7 @@ export default function SetupPage() {
         </div>
       </Card>
 
-      <Card className="grid grid-cols-2 gap-4">
+      <Card className="grid grid-cols-2 gap-5">
         <div>
           <Label>Periods per day</Label>
           <Input type="number" min={1} max={14} value={periodsPerDay}
@@ -252,7 +257,7 @@ export default function SetupPage() {
             <Label>Periods on half-days</Label>
             <Input type="number" min={1} max={periodsPerDay} value={halfDayPeriods}
               onChange={(e) => setHalfDayPeriods(Number(e.target.value))} />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               For {halfDays.map((d) => d.slice(0, 3)).join(", ")}
             </p>
           </div>
@@ -283,7 +288,6 @@ export default function SetupPage() {
           <Input type="number" min={0} max={120} value={lunchMins}
             onChange={(e) => setLunchMins(Number(e.target.value))} />
         </div>
-
         <div>
           <Label>After-break period length (min)</Label>
           <Input type="number" min={10} max={120} value={afterBreakMins}
@@ -291,7 +295,7 @@ export default function SetupPage() {
               setManual((m) => ({ ...m, afterBreakMins: true }));
               setAfterBreakMins(Number(e.target.value));
             }} />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             {afterBreakMins === periodMins
               ? "Same as morning periods."
               : afterBreakMins < periodMins
@@ -302,8 +306,8 @@ export default function SetupPage() {
       </Card>
 
       {error && (
-        <Card className="border-red-200 bg-red-50">
-          <p className="text-sm text-red-700">{error}</p>
+        <Card className="border-destructive/30 bg-destructive/5">
+          <p className="text-sm text-destructive">{error}</p>
         </Card>
       )}
 

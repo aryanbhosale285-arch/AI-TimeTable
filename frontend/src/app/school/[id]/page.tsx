@@ -20,6 +20,9 @@ import { Card, Button, Badge, Input, Label } from "@/components/ui";
 
 const ROOM_TYPES = ["CLASSROOM", "LAB", "LIBRARY", "HALL", "OTHER"];
 
+const selectClass =
+  "w-full rounded-sm border border-border bg-paper px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-accent focus:ring-1 focus:ring-accent";
+
 export default function SchoolPage({ params }: { params: { id: string } }) {
   const sid = Number(params.id);
 
@@ -113,15 +116,18 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
     }
   }
 
-  if (!school) return <p className="text-slate-500">Loading…</p>;
+  if (!school) return <p className="font-mono text-sm text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      {/* School header */}
+      <div className="flex items-end justify-between gap-6">
         <div>
-          <Link href="/" className="text-sm text-slate-500 hover:text-brand-600">← All schools</Link>
-          <h1 className="text-2xl font-bold">{school.name}</h1>
-          <p className="text-sm text-slate-500">
+          <Link href="/" className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground transition">
+            ← All schools
+          </Link>
+          <h1 className="mt-2 font-display text-5xl leading-tight">{school.name}</h1>
+          <p className="mt-2 font-mono text-xs text-muted-foreground">
             {school.board} · {school.academic_year} · {school.working_days.length} days ·{" "}
             {school.periods_per_day} periods/day
           </p>
@@ -151,30 +157,36 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
       />
 
       {/* CSV upload */}
-      <Card className="space-y-3">
-        <h2 className="font-semibold">1. Import teacher assignments</h2>
-        <p className="text-sm text-slate-500">
+      <Card className="space-y-4">
+        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          § 01 — Import
+        </div>
+        <h2 className="font-display text-3xl">Import teacher assignments</h2>
+        <p className="text-sm text-muted-foreground">
           Upload a CSV/Excel with columns: Teacher Name, Subject, Standard, Section,
           Lectures/Week, Preferred Time, Special Room.{" "}
-          <a href="/template.csv" download className="text-brand-600">Download template</a>
+          <a href="/template.csv" download className="text-accent hover:underline">Download template</a>
         </p>
         <input type="file" accept=".csv,.xlsx,.xls" onChange={handleUpload}
-          className="block text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white" />
-        {uploadMsg && <p className="text-sm text-slate-600">{uploadMsg}</p>}
+          className="block text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-ink file:px-4 file:py-2.5 file:text-cream file:font-medium file:cursor-pointer" />
+        {uploadMsg && <p className="font-mono text-xs text-muted-foreground">{uploadMsg}</p>}
       </Card>
 
       {/* Assignments preview */}
       {assignments && assignments.length > 0 && (
         <Card>
-          <h2 className="mb-3 font-semibold">Assignments ({assignments.length})</h2>
-          <div className="max-h-64 overflow-auto rounded-lg border dark:border-slate-700">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-3xl">Assignments</h2>
+            <Badge color="slate">{assignments.length}</Badge>
+          </div>
+          <div className="max-h-64 overflow-auto rounded-sm border border-border">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <thead className="sticky top-0 border-b border-border bg-muted text-left">
                 <tr>
-                  <th className="px-3 py-2">Teacher</th>
-                  <th className="px-3 py-2">Subject</th>
-                  <th className="px-3 py-2">Section</th>
-                  <th className="px-3 py-2">Lectures/wk</th>
+                  <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Teacher</th>
+                  <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Subject</th>
+                  <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Section</th>
+                  <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Lectures/wk</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,11 +194,11 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
                   const t = teachers?.find((x) => x.id === a.teacher_id);
                   const sub = subjects?.find((x) => x.id === a.subject_id);
                   return (
-                    <tr key={a.id} className="border-t dark:border-slate-700">
-                      <td className="px-3 py-2">{t?.name ?? a.teacher_id}</td>
-                      <td className="px-3 py-2">{sub?.name ?? a.subject_id}</td>
-                      <td className="px-3 py-2">#{a.section_id}</td>
-                      <td className="px-3 py-2">
+                    <tr key={a.id} className="border-t border-border transition hover:bg-paper">
+                      <td className="px-3 py-2.5">{t?.name ?? a.teacher_id}</td>
+                      <td className="px-3 py-2.5">{sub?.name ?? a.subject_id}</td>
+                      <td className="px-3 py-2.5">#{a.section_id}</td>
+                      <td className="px-3 py-2.5">
                         {a.lectures_per_week}
                         {a.lectures_per_week_max ? `–${a.lectures_per_week_max}` : ""}
                       </td>
@@ -200,8 +212,11 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
       )}
 
       {/* Preflight + generate */}
-      <Card className="space-y-4">
-        <h2 className="font-semibold">2. Check feasibility &amp; generate</h2>
+      <Card className="space-y-5">
+        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          § 02 — Generate
+        </div>
+        <h2 className="font-display text-3xl">Check feasibility &amp; generate</h2>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={runPreflight} disabled={busy}>
             Run pre-flight check
@@ -212,9 +227,9 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
         </div>
 
         {busy && genStage && (
-          <div className="flex items-center gap-3 rounded-lg border border-brand-500/30 bg-brand-50 p-4 dark:border-brand-500/40 dark:bg-brand-500/10">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-            <p className="text-sm text-brand-700 dark:text-indigo-300">
+          <div className="flex items-center gap-3 rounded-sm border border-accent/30 bg-accent/5 p-4">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <p className="text-sm text-foreground">
               {genStage === "preflight" && "Checking feasibility…"}
               {genStage === "solving" && "Solving — placing every lecture without clashes…"}
               {genStage === "saving" && "Saving the timetable…"}
@@ -224,24 +239,24 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
         )}
 
         {preflight && (
-          <div className={`rounded-lg border p-4 ${preflight.feasible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
-            <p className="font-medium">
+          <div className={`rounded-sm border p-4 ${preflight.feasible ? "border-accent/30 bg-accent/5" : "border-destructive/30 bg-destructive/5"}`}>
+            <p className="font-display text-xl">
               {preflight.feasible ? "✓ Feasible" : "✗ Not feasible — fix these first:"}
             </p>
             {preflight.errors.map((er, i) => (
-              <p key={i} className="mt-1 text-sm text-red-700">• {er}</p>
+              <p key={i} className="mt-1 text-sm text-destructive">• {er}</p>
             ))}
             {preflight.warnings.slice(0, 5).map((w, i) => (
-              <p key={i} className="mt-1 text-sm text-amber-700">⚠ {w}</p>
+              <p key={i} className="mt-1 text-sm text-accent">⚠ {w}</p>
             ))}
           </div>
         )}
 
         {genError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="font-medium text-red-700">Generation failed:</p>
+          <div className="rounded-sm border border-destructive/30 bg-destructive/5 p-4">
+            <p className="font-display text-xl text-destructive">Generation failed:</p>
             {genError.map((er, i) => (
-              <p key={i} className="mt-1 text-sm text-red-700">• {er}</p>
+              <p key={i} className="mt-1 text-sm text-destructive">• {er}</p>
             ))}
           </div>
         )}
@@ -250,15 +265,15 @@ export default function SchoolPage({ params }: { params: { id: string } }) {
       {/* Timetables */}
       {timetables && timetables.length > 0 && (
         <Card>
-          <h2 className="mb-3 font-semibold">Generated timetables</h2>
-          <ul className="divide-y">
+          <h2 className="mb-4 font-display text-3xl">Generated timetables</h2>
+          <ul className="divide-y divide-border">
             {timetables.map((tt) => (
-              <li key={tt.id} className="flex items-center justify-between py-3">
+              <li key={tt.id} className="flex items-center justify-between py-4">
                 <div>
-                  <Link href={`/school/${sid}/timetable/${tt.id}`} className="font-medium text-brand-600">
+                  <Link href={`/school/${sid}/timetable/${tt.id}`} className="font-display text-xl text-accent hover:underline">
                     {tt.name}
                   </Link>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     {new Date(tt.created_at).toLocaleString()}
                   </p>
                 </div>
@@ -322,9 +337,9 @@ function RoomsCard({
   }
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold">Rooms</h2>
+        <h2 className="font-display text-3xl">Rooms</h2>
         <Badge color="slate">{rooms?.length ?? 0}</Badge>
       </div>
 
@@ -335,11 +350,7 @@ function RoomsCard({
         </div>
         <div>
           <Label>Type</Label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={roomType}
-            onChange={(e) => setRoomType(e.target.value)}
-          >
+          <select className={selectClass} value={roomType} onChange={(e) => setRoomType(e.target.value)}>
             {ROOM_TYPES.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
@@ -347,12 +358,7 @@ function RoomsCard({
         </div>
         <div>
           <Label>Capacity</Label>
-          <Input
-            type="number"
-            min={1}
-            value={capacity}
-            onChange={(e) => setCapacity(Number(e.target.value))}
-          />
+          <Input type="number" min={1} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
         </div>
         <div className="flex items-end">
           <Button onClick={addRoom} disabled={busy || !name.trim()} className="w-full">
@@ -361,41 +367,41 @@ function RoomsCard({
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input
           type="checkbox"
           checked={isAvailable}
           onChange={(e) => setIsAvailable(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300"
+          className="h-4 w-4 rounded-sm border-border accent-accent"
         />
         Available for scheduling
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="overflow-auto rounded-lg border dark:border-slate-700">
+      <div className="overflow-auto rounded-sm border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <thead className="border-b border-border bg-muted text-left">
             <tr>
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Type</th>
-              <th className="px-3 py-2">Capacity</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2 text-right">Action</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Name</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Type</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Capacity</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Status</th>
+              <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Action</th>
             </tr>
           </thead>
           <tbody>
             {(rooms ?? []).map((room) => (
-              <tr key={room.id} className="border-t dark:border-slate-700">
-                <td className="px-3 py-2 font-medium">{room.name}</td>
-                <td className="px-3 py-2">{room.room_type}</td>
-                <td className="px-3 py-2">{room.capacity}</td>
-                <td className="px-3 py-2">
+              <tr key={room.id} className="border-t border-border transition hover:bg-paper">
+                <td className="px-3 py-2.5 font-medium">{room.name}</td>
+                <td className="px-3 py-2.5">{room.room_type}</td>
+                <td className="px-3 py-2.5">{room.capacity}</td>
+                <td className="px-3 py-2.5">
                   <Badge color={room.is_available ? "green" : "slate"}>
                     {room.is_available ? "Available" : "Unavailable"}
                   </Badge>
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2.5 text-right">
                   <Button variant="danger" className="px-3 py-1.5" onClick={() => deleteRoom(room.id)}>
                     Delete
                   </Button>
@@ -404,7 +410,7 @@ function RoomsCard({
             ))}
             {rooms?.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-center text-slate-500" colSpan={5}>
+                <td className="px-3 py-6 text-center text-muted-foreground" colSpan={5}>
                   No rooms yet.
                 </td>
               </tr>
@@ -465,9 +471,9 @@ function SubjectsCard({
   }
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold">Subject master list</h2>
+        <h2 className="font-display text-3xl">Subject master list</h2>
         <Badge color="slate">{subjects?.length ?? 0}</Badge>
       </div>
 
@@ -482,11 +488,7 @@ function SubjectsCard({
         </div>
         <div>
           <Label>Room</Label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={requiresRoomType}
-            onChange={(e) => setRequiresRoomType(e.target.value)}
-          >
+          <select className={selectClass} value={requiresRoomType} onChange={(e) => setRequiresRoomType(e.target.value)}>
             {ROOM_TYPES.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
@@ -503,7 +505,7 @@ function SubjectsCard({
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="space-y-2">
         {(subjects ?? []).map((subject) => (
@@ -516,7 +518,7 @@ function SubjectsCard({
           />
         ))}
         {subjects?.length === 0 && (
-          <p className="rounded-lg border px-3 py-4 text-center text-sm text-slate-500 dark:border-slate-700">
+          <p className="rounded-sm border border-border px-3 py-6 text-center text-sm text-muted-foreground">
             No subjects yet.
           </p>
         )}
@@ -557,19 +559,15 @@ function SubjectRow({
   const changed = name !== subject.name || color !== subject.color;
 
   return (
-    <div className="rounded-lg border p-3 dark:border-slate-700">
+    <div className="rounded-sm border border-border p-3">
       <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto_auto_auto] sm:items-center">
         <span
-          className="h-8 w-8 rounded border dark:border-slate-700"
+          className="h-8 w-8 rounded-sm border border-border"
           style={{ backgroundColor: color }}
           aria-label={`${subject.name} color`}
         />
         <Input value={name} onChange={(e) => setName(e.target.value)} />
-        <Input
-          type="color"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-        />
+        <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         <Button variant="ghost" onClick={save} disabled={!changed || saving || !name.trim()}>
           Save
         </Button>
@@ -577,12 +575,12 @@ function SubjectRow({
           Delete
         </Button>
       </div>
-      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+      <div className="mt-2 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {subject.code && <span>{subject.code}</span>}
         <span>{subject.requires_room_type}</span>
         <span>{subject.color}</span>
       </div>
-      {error && <p className="mt-2 text-sm text-amber-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-accent">{error}</p>}
     </div>
   );
 }
@@ -651,20 +649,16 @@ function FixedSlotsCard({
   }
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold">Fixed slots</h2>
+        <h2 className="font-display text-3xl">Fixed slots</h2>
         <Badge color={fixedSlotsError ? "red" : "slate"}>{fixedSlots?.length ?? 0}</Badge>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-6">
         <div>
           <Label>Section</Label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={activeSectionId}
-            onChange={(e) => setSectionId(Number(e.target.value))}
-          >
+          <select className={selectClass} value={activeSectionId} onChange={(e) => setSectionId(Number(e.target.value))}>
             {sections.map((section) => (
               <option key={section.id} value={section.id}>
                 {section.std} {section.name}
@@ -674,11 +668,7 @@ function FixedSlotsCard({
         </div>
         <div>
           <Label>Day</Label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={dayIndex}
-            onChange={(e) => setDayIndex(Number(e.target.value))}
-          >
+          <select className={selectClass} value={dayIndex} onChange={(e) => setDayIndex(Number(e.target.value))}>
             {days.map((day, index) => (
               <option key={day.id ?? day.day_name} value={index}>
                 {day.day_name}
@@ -688,11 +678,7 @@ function FixedSlotsCard({
         </div>
         <div>
           <Label>Period</Label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={periodIndex}
-            onChange={(e) => setPeriodIndex(Number(e.target.value))}
-          >
+          <select className={selectClass} value={periodIndex} onChange={(e) => setPeriodIndex(Number(e.target.value))}>
             {Array.from({ length: school.periods_per_day }, (_, p) => (
               <option key={p} value={p}>P{p + 1}</option>
             ))}
@@ -704,11 +690,7 @@ function FixedSlotsCard({
         </div>
         <div>
           <Label>Subject</Label>
-          <select
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value ? Number(e.target.value) : "")}
-          >
+          <select className={selectClass} value={subjectId} onChange={(e) => setSubjectId(e.target.value ? Number(e.target.value) : "")}>
             <option value="">None</option>
             {(subjects ?? []).map((subject) => (
               <option key={subject.id} value={subject.id}>{subject.name}</option>
@@ -722,32 +704,32 @@ function FixedSlotsCard({
         </div>
       </div>
 
-      {Boolean(fixedSlotsError) && <p className="text-sm text-red-600">Could not load fixed slots.</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {Boolean(fixedSlotsError) && <p className="text-sm text-destructive">Could not load fixed slots.</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="overflow-auto rounded-lg border dark:border-slate-700">
+      <div className="overflow-auto rounded-sm border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <thead className="border-b border-border bg-muted text-left">
             <tr>
-              <th className="px-3 py-2">Label</th>
-              <th className="px-3 py-2">Section</th>
-              <th className="px-3 py-2">Day</th>
-              <th className="px-3 py-2">Period</th>
-              <th className="px-3 py-2">Subject</th>
-              <th className="px-3 py-2 text-right">Action</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Label</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Section</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Day</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Period</th>
+              <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Subject</th>
+              <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Action</th>
             </tr>
           </thead>
           <tbody>
             {(fixedSlots ?? []).map((slot) => (
-              <tr key={slot.id} className="border-t dark:border-slate-700">
-                <td className="px-3 py-2 font-medium">{slot.label}</td>
-                <td className="px-3 py-2">{sectionLabel(slot.section_id, sections)}</td>
-                <td className="px-3 py-2">{days[slot.day_index]?.day_name ?? `Day ${slot.day_index + 1}`}</td>
-                <td className="px-3 py-2">P{slot.period_index + 1}</td>
-                <td className="px-3 py-2">
+              <tr key={slot.id} className="border-t border-border transition hover:bg-paper">
+                <td className="px-3 py-2.5 font-medium">{slot.label}</td>
+                <td className="px-3 py-2.5">{sectionLabel(slot.section_id, sections)}</td>
+                <td className="px-3 py-2.5">{days[slot.day_index]?.day_name ?? `Day ${slot.day_index + 1}`}</td>
+                <td className="px-3 py-2.5">P{slot.period_index + 1}</td>
+                <td className="px-3 py-2.5">
                   {subjects?.find((subject) => subject.id === slot.subject_id)?.name ?? "None"}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2.5 text-right">
                   <Button variant="danger" className="px-3 py-1.5" onClick={() => deleteFixedSlot(slot.id)}>
                     Delete
                   </Button>
@@ -756,7 +738,7 @@ function FixedSlotsCard({
             ))}
             {!fixedSlotsError && fixedSlots?.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-center text-slate-500" colSpan={6}>
+                <td className="px-3 py-6 text-center text-muted-foreground" colSpan={6}>
                   No fixed slots yet.
                 </td>
               </tr>
@@ -778,10 +760,9 @@ function sectionLabel(
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <Card className="text-center">
-      <div className="text-2xl font-bold text-brand-600">{value}</div>
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+    <Card className="text-center py-5">
+      <div className="font-display text-4xl text-accent">{value}</div>
+      <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
     </Card>
   );
 }
-

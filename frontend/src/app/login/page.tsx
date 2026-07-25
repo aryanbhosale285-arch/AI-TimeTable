@@ -44,64 +44,73 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto max-w-sm space-y-6 pt-8">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">
-          {mode === "login" ? "Sign in" : "Create your admin account"}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {mode === "login"
-            ? "Manage your school's timetables."
-            : "One account per institution admin — free to start."}
+    <div className="mx-auto flex min-h-[70vh] max-w-sm items-center">
+      <div className="w-full space-y-8">
+        <div className="text-center">
+          <div className="mx-auto mb-6 grid h-14 w-14 place-items-center rounded-sm bg-ink text-cream font-display text-3xl leading-none">
+            tt
+          </div>
+          <h1 className="font-display text-4xl">
+            {mode === "login" ? "Sign in" : "Create account"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {mode === "login"
+              ? "Manage your school's timetables."
+              : "One account per institution admin — free to start."}
+          </p>
+        </div>
+
+        <Card>
+          <form onSubmit={submit} className="space-y-5">
+            {mode === "register" && (
+              <div>
+                <Label>Your name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="A. Sharma" required />
+              </div>
+            )}
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@school.edu" required autoComplete="email" />
+            </div>
+            <div>
+              <Label>Password</Label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === "register" ? "At least 8 characters" : "••••••••"}
+                required minLength={mode === "register" ? 8 : undefined}
+                autoComplete={mode === "register" ? "new-password" : "current-password"} />
+            </div>
+
+            {error && (
+              <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+            </Button>
+          </form>
+        </Card>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {mode === "login" ? (
+            <>
+              New here?{" "}
+              <button className="font-medium text-accent hover:underline" onClick={() => { setMode("register"); setError(null); }}>
+                Create an account
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button className="font-medium text-accent hover:underline" onClick={() => { setMode("login"); setError(null); }}>
+                Sign in
+              </button>
+            </>
+          )}
         </p>
       </div>
-
-      <Card>
-        <form onSubmit={submit} className="space-y-4">
-          {mode === "register" && (
-            <div>
-              <Label>Your name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="A. Sharma" required />
-            </div>
-          )}
-          <div>
-            <Label>Email</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@school.edu" required autoComplete="email" />
-          </div>
-          <div>
-            <Label>Password</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === "register" ? "At least 8 characters" : "••••••••"}
-              required minLength={mode === "register" ? 8 : undefined}
-              autoComplete={mode === "register" ? "new-password" : "current-password"} />
-          </div>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
-          </Button>
-        </form>
-      </Card>
-
-      <p className="text-center text-sm text-slate-500">
-        {mode === "login" ? (
-          <>
-            New here?{" "}
-            <button className="font-medium text-brand-600" onClick={() => { setMode("register"); setError(null); }}>
-              Create an account
-            </button>
-          </>
-        ) : (
-          <>
-            Already have an account?{" "}
-            <button className="font-medium text-brand-600" onClick={() => { setMode("login"); setError(null); }}>
-              Sign in
-            </button>
-          </>
-        )}
-      </p>
     </div>
   );
 }

@@ -2,34 +2,58 @@
 
 import { useEffect, useState } from "react";
 
-export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+type Theme = "light" | "dark";
 
-  // Sync with whatever the no-flash script already applied to <html>.
+function getInitial(): Theme {
+  if (typeof window === "undefined") return "light";
+  const stored = localStorage.getItem("tt_theme") as Theme | null;
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>("light");
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setTheme(isDark ? "dark" : "light");
+    setTheme(getInitial());
+    setMounted(true);
   }, []);
 
-  function toggle() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-    try {
-      localStorage.setItem("theme", next);
-    } catch {
-      /* ignore storage errors (private mode, etc.) */
-    }
-  }
+  useEffect(() => {
+    if (!mounted) return;
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("tt_theme", theme);
+  }, [theme, mounted]);
+
+  const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const isDark = theme === "dark";
 
   return (
     <button
-      type="button"
       onClick={toggle}
-      aria-label="Toggle dark mode"
-      className="grid h-8 w-8 place-items-center rounded-lg border border-slate-300 text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+      aria-label="Toggle theme"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-paper text-foreground transition hover:border-foreground/40"
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {mounted ? (isDark ? <Sun /> : <Moon />) : <Moon />}
     </button>
+  );
+}
+
+function Sun() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  );
+}
+
+function Moon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+    </svg>
   );
 }
